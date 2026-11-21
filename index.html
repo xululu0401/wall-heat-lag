@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>晒透一堵墙</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; background: #eef0ec; color: #23271f; line-height: 1.6; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 20px 14px 40px; }
+  h1 { font-size: 26px; letter-spacing: 1px; }
+  .lead { color: #5b6254; font-size: 14px; margin: 4px 0 14px; }
+  .card { background: #fff; border-radius: 8px; padding: 14px; border: 1px solid #d5dacf; margin-bottom: 14px; min-width: 0; }
+  .card h2 { font-size: 15px; color: #4e5747; font-weight: 600; margin-bottom: 8px; overflow-wrap: anywhere; }
+  input, select { font: inherit; font-size: 14px; padding: 4px 6px; border: 1px solid #b6bdaa; border-radius: 5px; width: 100%; min-width: 0; background: #fff; font-variant-numeric: tabular-nums; }
+  .bad { border-color: #b23a2b !important; background: #fff0ec !important; }
+  label { font-size: 12px; color: #6b7362; display: block; }
+  button { font: inherit; font-size: 13px; padding: 6px 11px; border-radius: 5px; border: 1px solid #3d5a2e; background: #3d5a2e; color: #fff; cursor: pointer; }
+  button.ghost { background: #fff; color: #3d5a2e; }
+  button.x { padding: 2px 7px; background: #fff; color: #555d4c; border-color: #c8cebd; }
+  button:disabled { opacity: .45; cursor: default; }
+  .row5 { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+  .presets, .dl { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .err { display: none; background: #fff0ec; border: 1px solid #e0b2a7; color: #8a2a1b; border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; overflow-wrap: anywhere; }
+  .muted { color: #6b7362; font-size: 12px; }
+  /* 墙一层层：从外到里 */
+  .side { display: flex; justify-content: space-between; font-size: 12px; color: #6b7362; margin-bottom: 4px; }
+  .layers { display: grid; gap: 8px; }
+  .layer { display: grid; grid-template-columns: 1.3fr 1.2fr 0.8fr 0.8fr 0.8fr 0.8fr auto; gap: 8px; align-items: end; border-left: 6px solid var(--sw, #999); padding: 4px 0 8px 8px; border-bottom: 1px dashed #dfe3d8; }
+  .layer .ops { display: flex; gap: 3px; padding-bottom: 2px; }
+  @media (max-width: 680px) { .layer { grid-template-columns: 1fr 1fr 1fr; } .layer .nm, .layer .mt { grid-column: span 3; } .layer .ops { grid-column: span 3; justify-content: flex-end; } }
+  /* 结论 */
+  #summary { font-size: 20px; font-weight: 700; overflow-wrap: anywhere; margin-bottom: 8px; }
+  #facts { margin: 8px 0 0 18px; font-size: 14px; } #facts li { margin: 3px 0; overflow-wrap: anywhere; }
+  svg { display: block; width: 100%; height: auto; }
+  svg text { font-family: inherit; }
+  .leg { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: #4e5747; margin-top: 6px; }
+  .leg i { display: inline-block; width: 18px; height: 10px; border-radius: 2px; vertical-align: 0; margin-right: 4px; }
+  .tw { overflow-x: auto; }
+  table.t { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+  table.t th, table.t td { padding: 5px 6px; border-bottom: 1px solid #e4e8de; text-align: right; white-space: nowrap; }
+  table.t th:first-child, table.t td:first-child { text-align: left; white-space: normal; overflow-wrap: anywhere; min-width: 90px; }
+  table.t th { white-space: normal; vertical-align: bottom; color: #4e5747; font-weight: 600; }
+  @media (max-width: 480px) { table.t { font-size: 12px; } table.t th, table.t td { padding: 4px 3px; } }
+  table.t tr.big td { font-weight: 700; color: #3d5a2e; }
+  #sugs { display: grid; gap: 8px; }
+  .sug { display: flex; gap: 10px; align-items: center; justify-content: space-between; border: 1px solid #e4e8de; border-radius: 6px; padding: 8px 10px; }
+  .sug span { min-width: 0; overflow-wrap: anywhere; font-size: 14px; } .sug button { flex: none; }
+  @media (max-width: 480px) { .sug { flex-direction: column; align-items: stretch; } #summary { font-size: 18px; } }
+  .how { font-size: 13px; color: #3f463a; } .how p { margin: 6px 0; } .how b { color: #23271f; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>晒透一堵墙</h1>
+  <p class="lead">下午四点太阳最毒，西墙里面却要到半夜才最烫；老窑洞冬暖夏凉，也是同一个道理。把墙一层层填进来（材料、厚度），再填墙外一天最热最冷、几点最热，这里算出墙里面几点最热、晚了几小时、一天晃几度，每一层各挡了多少。默认是一堵虚构的 24 砖墙，材料数值是常见热工手册里的约数。</p>
+
+  <div class="card">
+    <h2>墙外和屋里</h2>
+    <div class="row5">
+      <div><label for="hi">墙外最热（°C）</label><input id="hi" inputmode="decimal" maxlength="6"></div>
+      <div><label for="lo">墙外最冷（°C）</label><input id="lo" inputmode="decimal" maxlength="6"></div>
+      <div><label for="peak">墙外几点最热</label><input id="peak" maxlength="5" placeholder="16:00"></div>
+      <div><label for="indoor">屋里空气（°C）</label><input id="indoor" inputmode="decimal" maxlength="6"></div>
+      <div><label for="target">墙里面最多晃几度（±°C）</label><input id="target" inputmode="decimal" maxlength="5"></div>
+    </div>
+    <p class="muted" style="margin-top:6px">「墙外」指墙外表面感受到的温度：晒到太阳的墙比气温高很多，西墙夏天下午 45°C 很常见。不知道就填当天气温。</p>
+    <div class="presets" id="presets"></div>
+  </div>
+
+  <div class="card">
+    <h2>这堵墙，从外到里（最多 6 层）</h2>
+    <div class="side"><span>⬅ 屋外</span><span>屋里 ➡ 在最下面</span></div>
+    <div class="layers" id="layers"></div>
+    <div class="presets"><button id="add" class="ghost">＋ 加一层</button></div>
+  </div>
+
+  <div class="err" id="error"></div>
+
+  <div id="out">
+    <div class="card">
+      <div id="summary"></div>
+      <ul id="facts"></ul>
+    </div>
+    <div class="card">
+      <h2>墙的剖面：冷热一层层被挡掉</h2>
+      <div id="sect"></div>
+      <div class="leg"><span><i style="background:#eaa58c"></i>一天里这个位置的温度范围</span><span><i style="background:#c0392b;height:3px"></i>一天平均</span><span>横向按层画，薄层画宽了一些方便看，下方标真实厚度</span></div>
+    </div>
+    <div class="card">
+      <h2>一天 24 小时：外面和墙里面</h2>
+      <div id="day"></div>
+      <div class="leg"><span><i style="background:#e07b39;height:3px"></i>墙外</span><span><i style="background:#3d5a2e;height:3px"></i>墙里面（内表面）</span><span><i style="background:#9aa391;height:2px"></i>屋里空气</span></div>
+    </div>
+    <div class="card">
+      <h2>每层干了多少</h2>
+      <div class="tw"><table class="t" id="seg"></table></div>
+      <p class="muted" style="margin-top:4px">「晃动减小」= 这一层外侧晃的幅度 ÷ 里侧晃的幅度，几层连乘就是整堵墙的倍数；「推迟」几层相加就是总的晚了多少。</p>
+    </div>
+    <div class="card" id="sugCard">
+      <h2>换个做法看看（点一下代回去重算）</h2>
+      <div id="sugs"></div>
+    </div>
+    <div class="card">
+      <h2>逐小时</h2>
+      <div class="tw"><table class="t" id="hrs"></table></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>带走结果</h2>
+    <div class="dl">
+      <button id="dlCSV">CSV 表格</button><button id="dlMD">Markdown 报告</button><button id="dlPNG">结果卡 PNG</button><button id="dlJSON" class="ghost">JSON 备份</button>
+      <button id="reset" class="ghost">恢复默认</button>
+    </div>
+    <p class="muted" style="margin-top:6px">输入自动保存在这台设备的浏览器里，刷新还在。</p>
+  </div>
+
+  <div class="card how">
+    <h2>怎么算的</h2>
+    <p><b>墙外</b>按一天一个起伏的正弦：最高、最低、几点最热由你填。<b>屋里空气</b>按恒温算。天天这样重复，墙里的温度也会稳定成每天一样的起伏，这里算的就是这个稳定状态。</p>
+    <p><b>每一层</b>用它的导热系数、密度、比热和厚度，按一维传热方程精确求解（传递矩阵）：越重、越厚、越难导热，冷热传得越慢、越弱。墙两面各有一层贴着的空气（外 0.04、里 0.11 m²·K/W）。</p>
+    <p><b>「晚了几小时」</b>是墙里面最热的时刻比墙外晚多少；<b>「减小几倍」</b>是外面一天晃的幅度 ÷ 墙里面晃的幅度。同一套计算还用另一种方法（逐分钟推进的有限差分）核对过。</p>
+    <p class="muted">不算：潮湿与结露、阳光直接照进屋、开窗通风、空调启停、多云下雨让一天不再规则。材料数值是约数，按你的实际材料改。本页不是建筑节能设计计算。</p>
+  </div>
+</div>
+
+  <script>
+/* 晒透一堵墙 · 计算核心
+ * 一维多层墙在一天周期（24 h 正弦）外温作用下的稳定周期传热：传递矩阵精确解。
+ * 外面：墙外表面受热的等效温度（晒到太阳的墙比气温高），按正弦，最高/最低/几点最热。
+ * 里面：室内空气温度恒定。表面换热阻：内 0.11、外 0.04 m²·K/W。
+ * 输出：墙里面（内表面）几点最热、晚了几小时、晃动幅度、最高温度、流进屋的热、逐层贡献、建议。 */
+(function (root) {
+  'use strict';
+  const DAY = 86400, W = 2 * Math.PI / DAY;
+  const RSI = 0.11, RSE = 0.04;
+  const MAX_LAYERS = 6;
+  /* 常见热工手册取值（约数），按你的材料改；k W/(m·K)，rho kg/m³，c J/(kg·K) */
+  const MATS = [
+    { id: 'rc', name: '钢筋混凝土', k: 1.74, rho: 2500, c: 920 },
+    { id: 'brick', name: '黏土实心砖', k: 0.81, rho: 1800, c: 1050 },
+    { id: 'aac', name: '加气混凝土块', k: 0.19, rho: 500, c: 1050 },
+    { id: 'cem', name: '水泥砂浆', k: 0.93, rho: 1800, c: 1050 },
+    { id: 'lime', name: '石灰砂浆', k: 0.81, rho: 1600, c: 1050 },
+    { id: 'earth', name: '夯实黄土', k: 0.93, rho: 1800, c: 1010 },
+    { id: 'stone', name: '花岗岩', k: 3.49, rho: 2800, c: 920 },
+    { id: 'wood', name: '松木（横纹）', k: 0.14, rho: 500, c: 2510 },
+    { id: 'gyp', name: '石膏板', k: 0.33, rho: 1050, c: 1050 },
+    { id: 'eps', name: '聚苯板 EPS', k: 0.039, rho: 20, c: 1380 },
+    { id: 'xps', name: '挤塑板 XPS', k: 0.030, rho: 35, c: 1380 },
+    { id: 'rock', name: '岩棉板', k: 0.040, rho: 140, c: 1220 },
+    { id: 'steel', name: '钢板', k: 58.2, rho: 7850, c: 480 }
+  ];
+
+  function Bad(message, field) { const e = new Error(message); e.field = field; return e; }
+  function num(v, field, label, lo, hi) {
+    const s = String(v == null ? '' : v).trim();
+    if (!/^-?\d+(\.\d+)?$/.test(s)) throw Bad(label + '要填数字（现在是「' + s + '」）', field);
+    const x = Number(s);
+    if (!(x >= lo && x <= hi)) throw Bad(label + '要在 ' + lo + ' 到 ' + hi + ' 之间（现在是 ' + s + '）', field);
+    return x;
+  }
+  function parseClock(v, field, label) {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(String(v == null ? '' : v).trim());
+    if (!m || +m[1] > 23 || +m[2] > 59) throw Bad(label + '要写成 16:00 这样（现在是「' + String(v) + '」）', field);
+    return +m[1] * 60 + +m[2];
+  }
+  function parse(inp) {
+    if (!inp || typeof inp !== 'object' || !Array.isArray(inp.layers)) throw Bad('输入不完整', 'hi');
+    const P = {};
+    P.hi = num(inp.hi, 'hi', '墙外最热', -50, 90);
+    P.lo = num(inp.lo, 'lo', '墙外最冷', -50, 90);
+    if (P.lo > P.hi) throw Bad('墙外最冷（' + P.lo + '°C）比最热（' + P.hi + '°C）还高，填反了？', 'lo');
+    P.peak = parseClock(inp.peak, 'peak', '墙外几点最热');
+    P.indoor = num(inp.indoor, 'indoor', '屋里空气', -20, 50);
+    P.target = num(inp.target, 'target', '墙里面最多晃几度', 0.1, 20);
+    if (!inp.layers.length) throw Bad('至少要有一层墙', 'add');
+    if (inp.layers.length > MAX_LAYERS) throw Bad('最多 ' + MAX_LAYERS + ' 层', 'add');
+    P.layers = inp.layers.map((L, i) => {
+      const f = 'l' + i + '-';
+      const name = String(L && L.name != null ? L.name : '').trim();
+      if (!name) throw Bad('第 ' + (i + 1) + ' 层没写名字', f + 'name');
+      if (name.length > 12) throw Bad('第 ' + (i + 1) + ' 层名字最多 12 个字', f + 'name');
+      const n = '「' + name + '」';
+      return {
+        name,
+        mm: num(L.mm, f + 'mm', n + '厚度（毫米）', 0.1, 5000),
+        k: num(L.k, f + 'k', n + '导热系数', 0.01, 500),
+        rho: num(L.rho, f + 'rho', n + '密度', 1, 20000),
+        c: num(L.c, f + 'c', n + '比热', 100, 5000)
+      };
+    });
+    P.mean = (P.hi + P.lo) / 2;
+    P.amp = (P.hi - P.lo) / 2;
+    return P;
+  }
+
+  /* ── 复数与带指数的二维向量（防溢出） ── */
+  const cx = (re, im) => [re, im];
+  const add = (a, b) => [a[0] + b[0], a[1] + b[1]];
+  const mul = (a, b) => [a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]];
+  const abs = (a) => Math.hypot(a[0], a[1]);
+  const div = (a, b) => { const d = b[0] * b[0] + b[1] * b[1]; return [(a[0] * b[0] + a[1] * b[1]) / d, (a[1] * b[0] - a[0] * b[1]) / d]; };
+  /* 状态 v = [θ, q] × e^E；从屋里往外推：层的逆矩阵 [[ch, sh/(kγ)], [kγ sh, ch]]，表面阻 [[1, R], [0, 1]] */
+  function norm(v) {
+    const m = Math.max(abs(v.t), abs(v.q));
+    if (m > 0 && (m > 1e100 || m < 1e-100)) { const s = 1 / m; v.t = [v.t[0] * s, v.t[1] * s]; v.q = [v.q[0] * s, v.q[1] * s]; v.E += Math.log(m); }
+    return v;
+  }
+  function stepFilm(v, R) { return norm({ t: add(v.t, [R * v.q[0], R * v.q[1]]), q: v.q, E: v.E }); }
+  function stepLayer(v, Lm, k, rho, c) {
+    const a = k / (rho * c), s = Math.sqrt(W / (2 * a)), x = s * Lm;
+    const g = cx(s, s); /* γ = (1+i)·sqrt(ω/2a) */
+    const kg = [k * g[0], k * g[1]];
+    /* 除掉 e^x 再算，防溢出：ch·e^-x，sh·e^-x */
+    const e2 = Math.exp(-2 * x), co = Math.cos(x), si = Math.sin(x);
+    const ch = [(1 + e2) / 2 * co, (1 - e2) / 2 * si];
+    const sh = [(1 - e2) / 2 * co, (1 + e2) / 2 * si];
+    const t = add(mul(ch, v.t), mul(div(sh, kg), v.q));
+    const q = add(mul(mul(kg, sh), v.t), mul(ch, v.q));
+    return norm({ t, q, E: v.E + x });
+  }
+  const arg = (a) => Math.atan2(a[1], a[0]);
+  function unwrapTo(prev, a) { let d = a - prev % (2 * Math.PI); while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return prev + d; }
+  const logAbs = (v) => Math.log(abs(v.t)) + v.E;
+
+  /* 从屋里空气往外走一遍，记录每个界面的 log|θ|、相位（连续展开）、稳态热阻累计 */
+  function sweep(P) {
+    let v = { t: cx(0, 0), q: cx(1, 0), E: 0 }, ph = 0, R = 0;
+    const pts = [], sub = []; /* 由内到外的采样点：{R, la, ph, pos} pos: 'in-air'|'si'|'iface'|'se'|'out-air' */
+    const film = (Rf, pos) => {
+      const n = 8;
+      for (let j = 1; j <= n; j++) {
+        v = stepFilm(v, Rf / n); R += Rf / n;
+        if (abs(v.t) > 0) ph = unwrapTo(ph, arg(v.t));
+        if (j === n) pts.push({ R, la: logAbs(v), ph, pos });
+      }
+    };
+    film(RSI, 'si');
+    const inner = P.layers.slice().reverse();
+    inner.forEach((L, idx) => {
+      const Lm = L.mm / 1000, a = L.k / (L.rho * L.c), x = Lm * Math.sqrt(W / (2 * a));
+      const n = Math.max(12, Math.ceil(x / 0.15));
+      for (let j = 0; j < n; j++) {
+        v = stepLayer(v, Lm / n, L.k, L.rho, L.c); ph = unwrapTo(ph, arg(v.t));
+        if (j < n - 1) sub.push({ R: R + Lm / L.k * (j + 1) / n, la: logAbs(v), ph, li: P.layers.length - 1 - idx, frac: 1 - (j + 1) / n });
+      }
+      R += Lm / L.k;
+      pts.push({ R, la: logAbs(v), ph, pos: idx === inner.length - 1 ? 'se' : 'iface' });
+    });
+    film(RSE, 'out-air');
+    return { pts, sub, Rtot: R };
+  }
+
+  function clock(min) {
+    const m = ((Math.round(min) % 1440) + 1440) % 1440;
+    return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+  }
+  function dayTag(min) { const d = Math.floor(Math.round(min) / 1440); return d <= 0 ? '' : d === 1 ? '第二天 ' : '第 ' + (d + 1) + ' 天 '; }
+  function hm(min) {
+    const m = Math.round(min);
+    if (m < 60) return m + ' 分钟';
+    if (m >= 2880) { const d = Math.floor(m / 1440), hh = Math.round((m - d * 1440) / 60); return hh === 24 ? (d + 1) + ' 天' : d + ' 天' + (hh ? ' ' + hh + ' 小时' : ''); }
+    const h = Math.floor(m / 60), r = m % 60;
+    return h + ' 小时' + (r ? ' ' + r + ' 分' : '');
+  }
+  const f1 = (x) => { const s = (Math.round(x * 10) / 10).toFixed(1); return s === '-0.0' ? '0.0' : s; };
+  const f2 = (x) => { const s = (Math.round(x * 100) / 100).toFixed(2); return s === '-0.00' ? '0.00' : s; };
+  function ampText(a) { return a < 0.005 ? '不到 0.01°C' : '±' + f2(a) + '°C'; }
+  /* 「晃 ±0.68°C」/「晃不到 0.01°C」：中文前不留空格 */
+  function shake(a) { return a < 0.005 ? '晃不到 0.01°C' : '晃 ' + ampText(a); }
+  function layerRatio(x) { return x >= 100 ? ratioText(x) : f2(x) + ' 倍'; }
+  function ratioText(nu) {
+    if (!isFinite(nu) || nu > 1e6) return '一百万倍以上';
+    if (nu >= 100) return Math.round(nu).toLocaleString('en-US') + ' 倍';
+    return f1(nu) + ' 倍';
+  }
+
+  function core(P) {
+    const sw = sweep(P), pts = sw.pts, Rtot = sw.Rtot;
+    const out = pts[pts.length - 1];
+    const si = pts[0];
+    /* θ(x)/θe = vθ(x)/G；G 是走到屋外空气时的 θ */
+    const lnG = out.la, phG = out.ph;
+    const amp = (p) => P.amp * Math.exp(p.la - lnG);
+    const lagMin = (p) => (phG - p.ph) / W / 60;
+    const meanAt = (p) => P.indoor + (P.mean - P.indoor) * p.R / Rtot;
+    const swing = P.amp > 0;
+    const Asi = amp(si);
+    const lag = lagMin(si);
+    const meanSi = meanAt(si);
+    const nu = swing ? Math.exp(lnG - si.la) : NaN; /* 外面晃动 ÷ 里面晃动 */
+    const qMean = (P.mean - P.indoor) / Rtot;
+    const qAmp = P.amp * Math.exp(-lnG);
+    /* 逐层：外表面阻、各层（外→内）、内表面阻 */
+    const outward = pts.slice(); /* 内→外 */
+    /* 段：out-air→se 是外表面阻；se→…→si 是各层；si 是内表面 */
+    const segs = [];
+    const nodes = [out].concat(outward.slice(0, -1).reverse()); /* 外空气、外表面、层间…、内表面 */
+    for (let i = 0; i + 1 < nodes.length; i++) {
+      const a = nodes[i], b = nodes[i + 1];
+      const isFilm = i === 0;
+      const L = isFilm ? null : P.layers[i - 1];
+      segs.push({
+        name: isFilm ? '外表面空气层' : L.name,
+        mm: isFilm ? 0 : L.mm,
+        R: a.R - b.R,
+        ratio: swing ? Math.exp(a.la - b.la) : NaN,
+        lag: swing ? (a.ph - b.ph) / W / 60 : NaN,
+        mass: isFilm ? 0 : L.rho * L.c * L.mm / 1000 / 1000 /* kJ/(m²·K) */
+      });
+    }
+    segs.push({ name: '内表面空气层', mm: 0, R: RSI, ratio: NaN, lag: NaN, mass: 0, inner: true });
+    /* 剖面上的点：外表面 → 内表面，位置按毫米 */
+    let pos = 0;
+    const prof = [];
+    const faces = nodes.slice(1); /* 外表面、层间、内表面 */
+    faces.forEach((p, i) => {
+      if (i > 0) pos += P.layers[i - 1].mm;
+      prof.push({ mm: pos, mean: meanAt(p), amp: swing ? amp(p) : 0, lag: swing ? lagMin(p) : 0 });
+    });
+    /* 画剖面用的密集点（外表面 → 内表面）：位置毫米、平均温度、晃动幅度 */
+    const starts = []; let acc = 0; P.layers.forEach((L) => { starts.push(acc); acc += L.mm; });
+    const dense = prof.map((p) => ({ mm: p.mm, mean: p.mean, amp: p.amp }))
+      .concat(sw.sub.map((p) => ({ mm: starts[p.li] + P.layers[p.li].mm * p.frac, mean: meanAt(p), amp: swing ? amp(p) : 0 })))
+      .sort((a, b) => a.mm - b.mm);
+    const peakIn = P.peak + lag;
+    return {
+      P, Rtot, U: 1 / Rtot, Asi, lag: swing ? lag : NaN, nu, meanSi, maxSi: meanSi + Asi, minSi: meanSi - Asi,
+      peakIn, qMean, qAmp, qMax: qMean + qAmp, segs, prof, dense, swing,
+      totalMm: P.layers.reduce((s, L) => s + L.mm, 0),
+      massTotal: P.layers.reduce((s, L) => s + L.rho * L.c * L.mm / 1e6, 0)
+    };
+  }
+
+  function hourly(r) {
+    const P = r.P, rows = [];
+    for (let h = 0; h < 24; h++) {
+      const t = h * 60;
+      const ph = W * (t - P.peak) * 60;
+      const te = P.mean + P.amp * Math.cos(ph);
+      const ts = r.meanSi + (r.swing ? r.Asi * Math.cos(ph - W * r.lag * 60) : 0);
+      const q = (ts - P.indoor) / RSI; /* 流进屋的热 = (内表面 − 屋里空气) ÷ 内表面换热阻 */
+      rows.push({ h, at: clock(t), out: te, inner: ts, q });
+    }
+    return rows;
+  }
+
+  function calculate(inp) {
+    const P = parse(inp);
+    const r = core(P);
+    const thick = r.totalMm >= 1000 ? f2(r.totalMm / 1000) + ' 米' : Math.round(r.totalMm * 10) / 10 + ' 毫米';
+    let summary;
+    if (!r.swing) {
+      summary = '墙外温度一天都不变，墙里面也不晃，一直是 ' + f1(r.meanSi) + '°C。';
+    } else if (r.Asi < 0.005) {
+      summary = '这堵墙厚到日夜冷热基本传不进来：外面一天晃 ±' + f1(P.amp) + '°C，里面只剩不到 0.01°C，一直约 ' + f1(r.meanSi) + '°C。';
+    } else {
+      summary = '墙外面 ' + clock(P.peak) + ' 最热，墙里面要到' + (dayTag(r.peakIn) ? dayTag(r.peakIn) : ' ') + clock(r.peakIn) + ' 才最热，晚了 ' + hm(r.lag) +
+        '；外面一天晃 ±' + f1(P.amp) + '°C，里面只' + shake(r.Asi) + '，墙里面最高 ' + f1(r.maxSi) + '°C。';
+    }
+    const facts = [];
+    facts.push('这堵墙共 ' + P.layers.length + ' 层、' + thick + '，从外到里：' + P.layers.map((L) => L.name + ' ' + L.mm + ' mm').join(' → ') + '。');
+    if (r.swing && r.lag >= 1440) facts.push('晚了一天以上：今天外面最热的那一波，要过 ' + hm(r.lag) + ' 才到墙里面，那时已经小得几乎感觉不到。');
+    if (r.swing) facts.push('外面的冷热传到里面被减小了 ' + ratioText(r.nu) + '（外面 ±' + f1(P.amp) + '°C ÷ 里面 ' + ampText(r.Asi) + '）。');
+    facts.push('墙里面一天在 ' + f1(r.minSi) + '～' + f1(r.maxSi) + '°C 之间，屋里空气按 ' + f1(P.indoor) + '°C 不变算。');
+    facts.push('流进屋里的热：平均 ' + f1(r.qMean) + ' W/m²，最多 ' + f1(r.qMax) + ' W/m²' + (r.swing ? '，最多的时刻和墙里面最热同时' : '') + '（正数是往屋里进，负数是往外跑）。');
+    facts.push('不看昼夜只看平均的保温性能：传热系数 K = ' + f2(r.U) + ' W/(m²·K)（总热阻 ' + f2(r.Rtot) + '，含内外表面）。');
+    return Object.assign(r, { summary, facts, rows: hourly(r) });
+  }
+
+  /* 把第 i 层改成 mm 后里面晃多少 */
+  function ampWith(inp, i, mm) {
+    const s = JSON.parse(JSON.stringify(inp)); s.layers[i].mm = String(mm);
+    return core(parse(s)).Asi;
+  }
+  /* 最小厚度（整毫米）让里面晃动 ≤ target；扫描 + 二分；找不到返回 null */
+  function thicknessFor(inp, i, target) {
+    const P = parse(inp);
+    const cur = P.layers[i].mm;
+    if (core(P).Asi <= target) return { already: true, mm: cur };
+    let lo = cur, hi = null, x = cur;
+    while (x < 5000) {
+      const nx = Math.min(5000, Math.max(x + 1, Math.ceil(x * 1.25)));
+      if (ampWith(inp, i, nx) <= target) { lo = x; hi = nx; break; }
+      x = nx;
+    }
+    if (hi == null) return null;
+    lo = Math.floor(lo);
+    while (hi - lo > 1) { const m = Math.floor((lo + hi) / 2); if (ampWith(inp, i, m) <= target) hi = m; else lo = m; }
+    return { already: false, mm: hi };
+  }
+
+  function suggestions(inp, r) {
+    const P = r.P, out = [];
+    if (!r.swing) return out;
+    const copy = (o) => JSON.parse(JSON.stringify(o));
+    const tell = (s) => { const x = core(parse(s)); return '里面' + shake(x.Asi) + '，晚 ' + hm(x.lag) + '，最高 ' + f1(x.maxSi) + '°C'; };
+    /* 1. 最重那层加厚到达标 */
+    if (r.Asi > P.target) {
+      let hi = 0;
+      P.layers.forEach((L, i) => { if (L.rho * L.c * L.mm > P.layers[hi].rho * P.layers[hi].c * P.layers[hi].mm) hi = i; });
+      const t = thicknessFor(inp, hi, P.target);
+      if (t && !t.already) {
+        const s = copy(inp); s.layers[hi].mm = String(t.mm);
+        out.push({ id: 'thicken', text: '把「' + P.layers[hi].name + '」从 ' + P.layers[hi].mm + ' 加厚到 ' + t.mm + ' mm，里面就只晃 ±' + f1(P.target) + '°C 以内：' + tell(s) + '。', apply: s });
+      } else if (!t) {
+        out.push({ id: 'thicken-none', text: '光加厚「' + P.layers[hi].name + '」到 5000 mm 也压不到 ±' + f1(P.target) + '°C 以内，得换材料或加保温。', apply: null });
+      }
+    }
+    /* 2. 外面贴 50 mm 聚苯板（没有保温层时） */
+    const insIdx = P.layers.findIndex((L) => L.k < 0.08);
+    if (insIdx < 0 && P.layers.length < MAX_LAYERS && r.Asi > P.target) {
+      const s = copy(inp); const at = P.layers.length > 1 && P.layers[0].mm <= 30 ? 1 : 0;
+      const m = MATS.find((x) => x.id === 'eps');
+      s.layers.splice(at, 0, { name: '聚苯板 EPS', mm: '50', k: String(m.k), rho: String(m.rho), c: String(m.c) });
+      out.push({ id: 'eps', text: '在外侧贴 50 mm 聚苯板：' + tell(s) + '。', apply: s });
+    }
+    /* 3. 保温层挪到另一侧 */
+    if (insIdx >= 0 && P.layers.length >= 2 && r.Asi > P.target) {
+      const s = copy(inp); const L = s.layers.splice(insIdx, 1)[0];
+      const toInner = insIdx < P.layers.length / 2;
+      if (toInner) s.layers.splice(s.layers.length - (s.layers.length > 1 && +s.layers[s.layers.length - 1].mm <= 30 ? 1 : 0), 0, L);
+      else s.layers.splice(s.layers.length > 1 && +s.layers[0].mm <= 30 ? 1 : 0, 0, L);
+      if (JSON.stringify(s.layers) !== JSON.stringify(inp.layers)) {
+        out.push({ id: 'move', text: '把「' + P.layers[insIdx].name + '」挪到' + (toInner ? '里侧' : '外侧') + '（同样的材料和厚度）：' + tell(s) + '。', apply: s });
+      }
+    }
+    return out;
+  }
+
+  function csvCell(v) { const s = String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+  function toCSV(r, stamp) {
+    const L = [['晒透一堵墙', '生成于 ' + stamp]];
+    L.push(['结论', r.summary]);
+    L.push([]);
+    L.push(['从外到里', '厚度 mm', '热阻 m²·K/W', '晃动减小（倍）', '推迟（分钟）']);
+    r.segs.forEach((s) => L.push([s.name, s.mm ? s.mm : '', f2(s.R), isNaN(s.ratio) ? '' : (s.ratio >= 100 ? layerRatio(s.ratio) : f2(s.ratio)), isNaN(s.lag) ? '' : Math.round(s.lag)]));
+    L.push([]);
+    L.push(['钟点', '墙外 °C', '墙里面 °C', '流进屋 W/m²']);
+    r.rows.forEach((x) => L.push([x.at, f1(x.out), f1(x.inner), f1(x.q)]));
+    return L.map((row) => row.map(csvCell).join(',')).join('\n') + '\n';
+  }
+  function toMD(r, stamp, sg) {
+    const P = r.P, o = [];
+    o.push('# 晒透一堵墙', '', '生成时间：' + stamp + '　默认数据为虚构示例', '', '**' + r.summary + '**', '');
+    r.facts.forEach((f) => o.push('- ' + f));
+    o.push('', '## 每层干了多少', '', '| 从外到里 | 厚度 mm | 热阻 | 晃动减小 | 推迟 |', '|---|---:|---:|---:|---:|');
+    r.segs.forEach((s) => o.push('| ' + s.name + ' | ' + (s.mm || '') + ' | ' + f2(s.R) + ' | ' + (isNaN(s.ratio) ? '—' : layerRatio(s.ratio)) + ' | ' + (isNaN(s.lag) ? '—' : hm(Math.max(0, s.lag))) + ' |'));
+    o.push('', '## 一天 24 小时', '', '| 钟点 | 墙外 °C | 墙里面 °C | 流进屋 W/m² |', '|---|---:|---:|---:|');
+    r.rows.forEach((x) => o.push('| ' + x.at + ' | ' + f1(x.out) + ' | ' + f1(x.inner) + ' | ' + f1(x.q) + ' |'));
+    if (sg && sg.length) { o.push('', '## 换个做法'); sg.forEach((s) => o.push('- ' + s.text)); }
+    o.push('', '## 前提', '', '- 墙外温度按一天一个正弦起伏，最高 ' + f1(P.hi) + '°C、最低 ' + f1(P.lo) + '°C、' + clock(P.peak) + ' 最热；屋里空气 ' + f1(P.indoor) + '°C 不变。',
+      '- 一维传热、天天重复的稳定状态；内表面换热阻 0.11、外表面 0.04 m²·K/W。不算潮湿、开窗、空调启停、阳光直接照进屋。',
+      '- 材料数值是常见热工手册取值（约数），请按实际材料改。');
+    return o.join('\n') + '\n';
+  }
+
+  const api = { layerRatio, shake, parse, calculate, suggestions, thicknessFor, toCSV, toMD, clock, hm, f1, f2, ampText, ratioText, dayTag, MATS, MAX_LAYERS, RSI, RSE, W, _core: core };
+  if (typeof module === 'object' && module.exports) module.exports = api; else root.AppCore = api;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+  </script>
+  <script>
+/* 晒透一堵墙 · 界面层 */
+(function () {
+  'use strict';
+  const C = window.AppCore;
+  const KEY = 'wall-heat-lag:v1';
+  const TOP = ['hi', 'lo', 'peak', 'indoor', 'target'];
+  const LF = ['name', 'mm', 'k', 'rho', 'c'];
+  const LIM = { hi: 6, lo: 6, peak: 5, indoor: 6, target: 5, name: 12, mm: 6, k: 6, rho: 6, c: 5, mat: 8 };
+  const SW = { rc: '#9aa0a6', brick: '#c0704d', aac: '#e5ddc8', cem: '#b5b0a5', lime: '#ddd8cc', earth: '#c9a46a', stone: '#8d8a86', wood: '#c89b5c', gyp: '#eeeeea', eps: '#f4f1a8', xps: '#a8d0f0', rock: '#e6c96a', steel: '#5d6d7e', custom: '#b7c4a8' };
+  const copy = (o) => JSON.parse(JSON.stringify(o));
+  const lay = (id, mm, name) => { const m = C.MATS.find((x) => x.id === id); return { name: name || m.name, mat: id, mm: String(mm), k: String(m.k), rho: String(m.rho), c: String(m.c) }; };
+  const base = { hi: '45', lo: '25', peak: '16:00', indoor: '26', target: '0.5' };
+  const DEFAULT = Object.assign({}, base, { layers: [lay('cem', 20, '外抹灰'), lay('brick', 240, '24 砖墙'), lay('lime', 20, '内抹灰')] });
+  const PRESETS = [
+    ['默认：西墙 24 砖墙，夏天', DEFAULT],
+    ['黄土窑洞 3 米', Object.assign({}, base, { hi: '40', lo: '20', peak: '15:00', indoor: '22', layers: [lay('earth', 3000, '窑脸后的黄土')] })],
+    ['彩钢板房', Object.assign({}, base, { hi: '60', lo: '24', peak: '14:00', indoor: '28', layers: [lay('steel', 0.5, '外钢板'), lay('eps', 75, '夹芯聚苯'), lay('steel', 0.5, '内钢板')] })],
+    ['20 混凝土 + 外保温', Object.assign({}, base, { layers: [lay('cem', 5, '抗裂砂浆'), lay('rock', 80, '外保温岩棉'), lay('rc', 200, '混凝土墙'), lay('gyp', 10, '石膏找平')] })],
+    ['冬天北墙', Object.assign({}, base, { hi: '2', lo: '-12', peak: '14:30', indoor: '20', target: '0.3', layers: [lay('cem', 20, '外抹灰'), lay('aac', 200, '加气块'), lay('lime', 20, '内抹灰')] })]
+  ];
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  let state = copy(DEFAULT);
+  let last = null;
+
+  function matOf(L) {
+    if (L.mat && (L.mat === 'custom' || C.MATS.some((m) => m.id === L.mat))) {
+      if (L.mat === 'custom') return 'custom';
+      const m = C.MATS.find((x) => x.id === L.mat);
+      if (String(m.k) === String(L.k) && String(m.rho) === String(L.rho) && String(m.c) === String(L.c)) return m.id;
+    }
+    const m = C.MATS.find((x) => String(x.k) === String(L.k) && String(x.rho) === String(L.rho) && String(x.c) === String(L.c));
+    return m ? m.id : 'custom';
+  }
+  function norm(s) { s.layers.forEach((L) => { L.mat = matOf(L); }); return s; }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* 隐私模式忽略 */ } }
+  function load() {
+    try {
+      const o = JSON.parse(localStorage.getItem(KEY) || 'null');
+      if (!o || typeof o !== 'object' || Array.isArray(o) || !Array.isArray(o.layers) || o.layers.length > C.MAX_LAYERS) return null;
+      const s = {};
+      for (const k of TOP) { if (o[k] == null) return null; s[k] = String(o[k]).slice(0, LIM[k]); }
+      s.layers = [];
+      for (const L of o.layers) {
+        if (!L || typeof L !== 'object') return null;
+        const x = {};
+        for (const k of LF) { if (L[k] == null) return null; x[k] = String(L[k]).slice(0, LIM[k]); }
+        x.mat = typeof L.mat === 'string' ? L.mat.slice(0, LIM.mat) : '';
+        s.layers.push(x);
+      }
+      return norm(s);
+    } catch (e) { return null; }
+  }
+
+  /* ── 墙层编辑 ── */
+  function buildLayers() {
+    const box = $('layers'); box.innerHTML = '';
+    const n = state.layers.length;
+    state.layers.forEach((L, i) => {
+      const row = document.createElement('div'); row.className = 'layer';
+      row.style.setProperty('--sw', SW[L.mat] || SW.custom);
+      const k = 'l' + i + '-';
+      row.innerHTML =
+        '<div class="nm"><label for="' + k + 'name">第 ' + (i + 1) + ' 层' + (i === 0 ? '（最外）' : i === n - 1 ? '（最里）' : '') + '</label><input id="' + k + 'name" maxlength="12"></div>' +
+        '<div class="mt"><label for="' + k + 'mat">材料</label><select id="' + k + 'mat">' + C.MATS.map((m) => '<option value="' + m.id + '">' + m.name + '</option>').join('') + '<option value="custom">自己填数值</option></select></div>' +
+        '<div><label for="' + k + 'mm">厚度 mm</label><input id="' + k + 'mm" inputmode="decimal" maxlength="6"></div>' +
+        '<div><label for="' + k + 'k">导热 W/(m·K)</label><input id="' + k + 'k" inputmode="decimal" maxlength="6"></div>' +
+        '<div><label for="' + k + 'rho">密度 kg/m³</label><input id="' + k + 'rho" inputmode="decimal" maxlength="6"></div>' +
+        '<div><label for="' + k + 'c">比热 J/(kg·K)</label><input id="' + k + 'c" inputmode="decimal" maxlength="5"></div>' +
+        '<div class="ops"><button class="x" data-up="' + i + '" title="往外挪">↑</button><button class="x" data-down="' + i + '" title="往里挪">↓</button><button class="x" data-del="' + i + '" title="删掉这层">删</button></div>';
+      box.appendChild(row);
+      LF.forEach((f) => {
+        const el = $(k + f); el.value = L[f];
+        el.addEventListener('input', () => {
+          state.layers[i][f] = el.value;
+          if (f !== 'name' && f !== 'mm') { state.layers[i].mat = matOf(state.layers[i]); $(k + 'mat').value = state.layers[i].mat; row.style.setProperty('--sw', SW[state.layers[i].mat] || SW.custom); }
+          run();
+        });
+      });
+      const ms = $(k + 'mat'); ms.value = L.mat;
+      ms.addEventListener('change', () => {
+        const m = C.MATS.find((x) => x.id === ms.value);
+        const cur = state.layers[i];
+        const oldName = C.MATS.find((x) => x.id === cur.mat);
+        cur.mat = ms.value;
+        if (m) {
+          if (!cur.name.trim() || (oldName && cur.name === oldName.name)) cur.name = m.name;
+          cur.k = String(m.k); cur.rho = String(m.rho); cur.c = String(m.c);
+        }
+        buildLayers(); run();
+      });
+      row.querySelector('[data-up]').disabled = i === 0;
+      row.querySelector('[data-down]').disabled = i === n - 1;
+      row.querySelector('[data-up]').addEventListener('click', () => { const a = state.layers; [a[i - 1], a[i]] = [a[i], a[i - 1]]; buildLayers(); run(); });
+      row.querySelector('[data-down]').addEventListener('click', () => { const a = state.layers; [a[i + 1], a[i]] = [a[i], a[i + 1]]; buildLayers(); run(); });
+      row.querySelector('[data-del]').addEventListener('click', () => { state.layers.splice(i, 1); buildLayers(); run(); });
+    });
+    $('add').disabled = n >= C.MAX_LAYERS;
+  }
+  function fill() { TOP.forEach((k) => { $(k).value = state[k]; }); buildLayers(); }
+
+  /* ── 剖面图（SVG 与 PNG 共用几何） ── */
+  function sectGeom(r, W0, H0) {
+    const P = r.P, n = P.layers.length;
+    const padL = 54, padR = 54, top = 40, bot = 46;
+    const W = W0 - padL - padR, H = H0 - top - bot;
+    const minW = Math.min(46, W / n * 0.6);
+    const tot = r.totalMm;
+    const ws = P.layers.map((L) => minW + (W - minW * n) * L.mm / tot);
+    const xs = []; let x = padL; ws.forEach((w) => { xs.push(x); x += w; });
+    let lo = Infinity, hi = -Infinity;
+    r.dense.forEach((p) => { lo = Math.min(lo, p.mean - p.amp); hi = Math.max(hi, p.mean + p.amp); });
+    lo = Math.min(lo, P.indoor); hi = Math.max(hi, P.indoor);
+    if (hi - lo < 1) { hi += 0.5; lo -= 0.5; }
+    const pad = (hi - lo) * 0.08; lo -= pad; hi += pad;
+    const starts = []; let acc = 0; P.layers.forEach((L) => { starts.push(acc); acc += L.mm; });
+    const X = (mm) => {
+      let i = 0; while (i < n - 1 && mm > starts[i] + P.layers[i].mm + 1e-9) i++;
+      return xs[i] + ws[i] * Math.min(1, Math.max(0, (mm - starts[i]) / P.layers[i].mm));
+    };
+    const Y = (t) => top + (hi - t) / (hi - lo) * H;
+    return { padL, padR, top, bot, W, H, xs, ws, X, Y, lo, hi };
+  }
+  /* 窄屏时用更窄的画布，字号在屏幕上不至于缩得太小 */
+  function svgW() { const w = ($('out') && $('out').clientWidth) || 900; return Math.round(Math.max(440, Math.min(900, w * 1.25))); }
+  function tick(lo, hi) { const sp = hi - lo; for (const s of [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50]) if (sp / s <= 6) return s; return 100; }
+  function renderSect(r) {
+    const P = r.P, W0 = svgW(), H0 = W0 < 700 ? 300 : 330, g = sectGeom(r, W0, H0);
+    let h = '<svg viewBox="0 0 ' + W0 + ' ' + H0 + '" role="img" aria-label="墙剖面温度">';
+    const st = tick(g.lo, g.hi);
+    for (let t = Math.ceil(g.lo / st) * st; t <= g.hi; t += st) h += '<line x1="' + g.padL + '" x2="' + (W0 - g.padR) + '" y1="' + g.Y(t) + '" y2="' + g.Y(t) + '" stroke="#e4e8de"/><text x="' + (g.padL - 6) + '" y="' + (g.Y(t) + 4) + '" text-anchor="end" font-size="12" fill="#6b7362">' + C.f1(t).replace(/\.0$/, '') + '°</text>';
+    P.layers.forEach((L, i) => {
+      const mat = state.layers[i] ? state.layers[i].mat : 'custom';
+      h += '<rect x="' + g.xs[i] + '" y="' + g.top + '" width="' + g.ws[i] + '" height="' + g.H + '" fill="' + (SW[mat] || SW.custom) + '" opacity="0.22"/><line x1="' + g.xs[i] + '" x2="' + g.xs[i] + '" y1="' + g.top + '" y2="' + (g.top + g.H) + '" stroke="#b6bdaa"/>';
+      const cx = g.xs[i] + g.ws[i] / 2, maxc = Math.max(1, Math.floor(g.ws[i] / 13));
+      const nm = L.name.length > maxc ? L.name.slice(0, Math.max(1, maxc - 1)) + '…' : L.name;
+      h += '<text x="' + cx + '" y="' + (g.top - 8) + '" text-anchor="middle" font-size="12" fill="#3f463a">' + esc(nm) + '</text>';
+      h += '<text x="' + cx + '" y="' + (H0 - g.bot + 18) + '" text-anchor="middle" font-size="12" fill="#6b7362">' + (g.ws[i] >= 34 ? L.mm + (g.ws[i] >= 60 ? ' mm' : '') : '') + '</text>';
+    });
+    const up = r.dense.map((p) => g.X(p.mm) + ',' + g.Y(p.mean + p.amp)).join(' ');
+    const dn = r.dense.slice().reverse().map((p) => g.X(p.mm) + ',' + g.Y(p.mean - p.amp)).join(' ');
+    h += '<polygon points="' + up + ' ' + dn + '" fill="#d9542b" opacity="0.38"/>';
+    h += '<polyline points="' + r.dense.map((p) => g.X(p.mm) + ',' + g.Y(p.mean)).join(' ') + '" fill="none" stroke="#c0392b" stroke-width="2"/>';
+    const o = r.prof[0], z = r.prof[r.prof.length - 1];
+    h += '<text x="' + (g.padL - 6) + '" y="' + (H0 - 8) + '" text-anchor="start" font-size="12" fill="#3f463a">外表面 ' + C.f1(o.mean) + '±' + C.f1(o.amp) + '°C</text>';
+    h += '<text x="' + (W0 - g.padR + 6) + '" y="' + (H0 - 8) + '" text-anchor="end" font-size="12" fill="#3d5a2e" font-weight="700">内表面 ' + C.f1(z.mean) + (z.amp >= 0.005 ? '±' + C.f2(z.amp) : '') + '°C</text>';
+    h += '<text x="' + (g.padL - 48) + '" y="' + (g.top + g.H / 2) + '" font-size="12" fill="#6b7362" transform="rotate(-90 ' + (g.padL - 40) + ' ' + (g.top + g.H / 2) + ')">屋外</text>';
+    h += '<text x="' + (W0 - 10) + '" y="' + (g.top + g.H / 2) + '" font-size="12" fill="#6b7362" text-anchor="end">屋里</text>';
+    h += '</svg>';
+    $('sect').innerHTML = h;
+  }
+  function dayGeom(r, W0, H0) {
+    const P = r.P, padL = 46, padR = 16, top = 16, bot = 30;
+    const W = W0 - padL - padR, H = H0 - top - bot;
+    let lo = Math.min(P.lo, r.minSi, P.indoor), hi = Math.max(P.hi, r.maxSi, P.indoor);
+    if (hi - lo < 1) { hi += 0.5; lo -= 0.5; }
+    const pad = (hi - lo) * 0.06; lo -= pad; hi += pad;
+    return { padL, padR, top, bot, W, H, lo, hi, X: (m) => padL + m / 1440 * W, Y: (t) => top + (hi - t) / (hi - lo) * H };
+  }
+  function curve(r) {
+    const P = r.P, pts = [];
+    for (let m = 0; m <= 1440; m += 10) {
+      const ph = C.W * (m - P.peak) * 60;
+      pts.push({ m, out: P.mean + P.amp * Math.cos(ph), inner: r.meanSi + (r.swing ? r.Asi * Math.cos(ph - C.W * r.lag * 60) : 0) });
+    }
+    return pts;
+  }
+  function renderDay(r) {
+    const P = r.P, W0 = svgW(), H0 = W0 < 700 ? 260 : 280, g = dayGeom(r, W0, H0), pts = curve(r);
+    const hstep = W0 < 700 ? 6 : 3;
+    let h = '<svg viewBox="0 0 ' + W0 + ' ' + H0 + '" role="img" aria-label="一天温度">';
+    const st = tick(g.lo, g.hi);
+    for (let t = Math.ceil(g.lo / st) * st; t <= g.hi; t += st) h += '<line x1="' + g.padL + '" x2="' + (W0 - g.padR) + '" y1="' + g.Y(t) + '" y2="' + g.Y(t) + '" stroke="#e4e8de"/><text x="' + (g.padL - 6) + '" y="' + (g.Y(t) + 4) + '" text-anchor="end" font-size="12" fill="#6b7362">' + C.f1(t).replace(/\.0$/, '') + '°</text>';
+    for (let hh = 0; hh <= 24; hh += hstep) h += '<text x="' + g.X(hh * 60) + '" y="' + (H0 - 8) + '" text-anchor="middle" font-size="12" fill="#6b7362">' + hh + ':00</text>';
+    h += '<line x1="' + g.padL + '" x2="' + (W0 - g.padR) + '" y1="' + g.Y(P.indoor) + '" y2="' + g.Y(P.indoor) + '" stroke="#9aa391" stroke-dasharray="4 4"/>';
+    h += '<polyline points="' + pts.map((p) => g.X(p.m) + ',' + g.Y(p.out)).join(' ') + '" fill="none" stroke="#e07b39" stroke-width="2.5"/>';
+    h += '<polyline points="' + pts.map((p) => g.X(p.m) + ',' + g.Y(p.inner)).join(' ') + '" fill="none" stroke="#3d5a2e" stroke-width="2.5"/>';
+    if (r.swing) {
+      const a = P.peak, b = ((Math.round(r.peakIn) % 1440) + 1440) % 1440;
+      h += '<circle cx="' + g.X(a) + '" cy="' + g.Y(P.hi) + '" r="4" fill="#e07b39"/><text x="' + g.X(a) + '" y="' + (g.Y(P.hi) - 8) + '" text-anchor="' + (a > 1260 ? 'end' : a < 180 ? 'start' : 'middle') + '" font-size="12" fill="#a24f17">外面最热 ' + C.clock(a) + '</text>';
+      if (r.Asi >= 0.005) h += '<circle cx="' + g.X(b) + '" cy="' + g.Y(r.maxSi) + '" r="4" fill="#3d5a2e"/><text x="' + g.X(b) + '" y="' + (g.Y(r.maxSi) - 8) + '" text-anchor="' + (b > 1260 ? 'end' : b < 180 ? 'start' : 'middle') + '" font-size="12" fill="#3d5a2e" font-weight="700">里面最热 ' + C.clock(b) + '</text>';
+    }
+    h += '</svg>';
+    $('day').innerHTML = h;
+  }
+  function segRows(r) {
+    return r.segs.map((s) => [s.name, s.mm ? String(s.mm) : '—', C.f2(s.R), isNaN(s.ratio) ? '—' : C.layerRatio(s.ratio), isNaN(s.lag) ? '—' : C.hm(Math.max(0, s.lag))]);
+  }
+  function renderSeg(r) {
+    const rows = segRows(r);
+    let big = -1, bv = 0;
+    r.segs.forEach((s, i) => { if (!isNaN(s.ratio) && s.ratio > bv) { bv = s.ratio; big = i; } });
+    let h = '<tr><th>从外到里</th><th>厚度 mm</th><th>热阻 m²·K/W</th><th style="white-space:nowrap">晃动减小</th><th>推迟</th></tr>';
+    rows.forEach((x, i) => { h += '<tr' + (i === big ? ' class="big"' : '') + '>' + x.map((c) => '<td>' + esc(c) + '</td>').join('') + '</tr>'; });
+    h += '<tr><td>整堵墙</td><td>' + esc(String(Math.round(r.totalMm * 10) / 10)) + '</td><td>' + C.f2(r.Rtot) + '</td><td>' + (r.swing ? esc(C.ratioText(r.nu)) : '—') + '</td><td>' + (r.swing ? esc(C.hm(r.lag)) : '—') + '</td></tr>';
+    $('seg').innerHTML = h;
+  }
+  function renderHrs(r) {
+    let h = '<tr><th>钟点</th><th>墙外 °C</th><th>墙里面 °C</th><th>流进屋 W/m²</th></tr>';
+    r.rows.forEach((x) => { h += '<tr><td>' + x.at + '</td><td>' + C.f1(x.out) + '</td><td>' + C.f1(x.inner) + '</td><td>' + C.f1(x.q) + '</td></tr>'; });
+    $('hrs').innerHTML = h;
+  }
+  function sugList(sg) {
+    const box = $('sugs'); box.innerHTML = '';
+    sg.forEach((x) => {
+      const d = document.createElement('div'); d.className = 'sug';
+      d.innerHTML = '<span>' + esc(x.text) + '</span>';
+      if (x.apply) {
+        const bt = document.createElement('button'); bt.textContent = '代回去算'; bt.dataset.sug = x.id;
+        bt.addEventListener('click', () => { state = norm(copy(x.apply)); fill(); run(); });
+        d.appendChild(bt);
+      }
+      box.appendChild(d);
+    });
+    $('sugCard').style.display = sg.length ? '' : 'none';
+  }
+  function run() {
+    [].forEach.call(document.querySelectorAll('.bad'), (e) => e.classList.remove('bad'));
+    $('add').disabled = state.layers.length >= C.MAX_LAYERS;
+    try {
+      const r = C.calculate(state);
+      const sg = C.suggestions(state, r);
+      $('error').style.display = 'none'; $('out').style.display = '';
+      $('summary').textContent = r.summary;
+      $('facts').innerHTML = r.facts.map((f) => '<li>' + esc(f) + '</li>').join('');
+      renderSect(r); renderDay(r); renderSeg(r); renderHrs(r); sugList(sg);
+      last = { r, sg };
+    } catch (e) {
+      last = null;
+      if (e.field) { const el = $(e.field); if (el) el.classList.add('bad'); }
+      $('error').textContent = '算不了：' + e.message; $('error').style.display = 'block';
+      $('out').style.display = 'none';
+    }
+    save();
+  }
+
+  /* ── 导出 ── */
+  function stamp() { const d = new Date(), z = (n) => String(n).padStart(2, '0'); return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()) + ' ' + z(d.getHours()) + ':' + z(d.getMinutes()); }
+  function download(name, blob) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); }
+  function wrap(g, t, w) {
+    const NOHEAD = '，。、；：！？）」』%·';
+    const out = []; let line = [];
+    const toks = String(t).match(/[+±-]?[0-9][0-9,.:%]*(°C)?|[A-Za-z_][A-Za-z0-9_.\-]*|[\s\S]/g) || [];
+    const width = (a) => g.measureText(a.join('')).width;
+    for (const tk of toks) {
+      if (line.length && width(line.concat([tk])) > w) {
+        let carry = [tk];
+        while (line.length > 1 && (NOHEAD.indexOf(carry[0][0]) >= 0 || '（「『'.indexOf(line[line.length - 1]) >= 0)) carry.unshift(line.pop());
+        out.push(line.join(''));
+        line = carry; if (/^\s+$/.test(line[0])) line.shift();
+      } else line.push(tk);
+    }
+    if (line.length) out.push(line.join('')); return out;
+  }
+  function fitText(g, t, w) {
+    if (g.measureText(t).width <= w) return t;
+    let s = t; while (s.length > 1 && g.measureText(s + '…').width > w) s = s.slice(0, -1);
+    return s + '…';
+  }
+  function drawPNG(Lx) {
+    const r = Lx.r, P = r.P;
+    const Wd = 1080, H = 1350, X = 70, TW = 940;
+    const cv = document.createElement('canvas'); cv.width = Wd; cv.height = H;
+    const g = cv.getContext('2d'), FF = '"PingFang SC","Microsoft YaHei",sans-serif';
+    g.fillStyle = '#eef0ec'; g.fillRect(0, 0, Wd, H);
+    g.fillStyle = '#ffffff'; g.fillRect(36, 36, Wd - 72, H - 72);
+    g.fillStyle = '#6b7362'; g.font = '24px ' + FF;
+    g.fillText(fitText(g, '晒透一堵墙 · ' + P.layers.length + ' 层 · 墙外 ' + C.f1(P.lo) + '～' + C.f1(P.hi) + '°C，' + C.clock(P.peak) + ' 最热', TW), X, 96);
+    g.fillStyle = '#23271f'; g.font = 'bold 34px ' + FF;
+    let y = 150;
+    const sl = wrap(g, r.summary, TW);
+    if (sl.length > 4) { sl.length = 4; sl[3] = fitText(g, sl[3] + '……', TW); }
+    sl.forEach((l) => { g.fillText(l, X, y); y += 46; });
+    y += 14;
+    /* 剖面 */
+    g.fillStyle = '#4e5747'; g.font = '22px ' + FF; g.fillText('墙的剖面（左是屋外，右是屋里）', X, y); y += 14;
+    const SH = 340, gs = sectGeom(r, TW, SH);
+    g.save(); g.translate(X, y);
+    g.font = '17px ' + FF;
+    P.layers.forEach((L, i) => {
+      const mat = state.layers[i] ? state.layers[i].mat : 'custom';
+      g.globalAlpha = 0.22; g.fillStyle = SW[mat] || SW.custom; g.fillRect(gs.xs[i], gs.top, gs.ws[i] - 1, gs.H); g.globalAlpha = 1;
+      g.fillStyle = '#3f463a'; g.textAlign = 'center';
+      g.fillText(fitText(g, L.name, gs.ws[i] - 4), gs.xs[i] + gs.ws[i] / 2, gs.top - 10);
+      g.fillStyle = '#6b7362';
+      if (gs.ws[i] >= 40) g.fillText(L.mm + (gs.ws[i] >= 70 ? ' mm' : ''), gs.xs[i] + gs.ws[i] / 2, SH - gs.bot + 22);
+    });
+    g.textAlign = 'left';
+    g.beginPath();
+    r.dense.forEach((p, i) => { const fn = i ? 'lineTo' : 'moveTo'; g[fn](gs.X(p.mm), gs.Y(p.mean + p.amp)); });
+    r.dense.slice().reverse().forEach((p) => g.lineTo(gs.X(p.mm), gs.Y(p.mean - p.amp)));
+    g.closePath(); g.globalAlpha = 0.38; g.fillStyle = '#d9542b'; g.fill(); g.globalAlpha = 1;
+    g.beginPath(); r.dense.forEach((p, i) => { const fn = i ? 'lineTo' : 'moveTo'; g[fn](gs.X(p.mm), gs.Y(p.mean)); });
+    g.strokeStyle = '#c0392b'; g.lineWidth = 3; g.stroke();
+    const st = tick(gs.lo, gs.hi); g.fillStyle = '#6b7362'; g.font = '16px ' + FF; g.textAlign = 'right';
+    for (let t = Math.ceil(gs.lo / st) * st; t <= gs.hi; t += st) g.fillText(C.f1(t).replace(/\.0$/, '') + '°', gs.padL - 8, gs.Y(t) + 5);
+    g.textAlign = 'left';
+    g.restore();
+    y += SH + 18;
+    const o = r.prof[0], z = r.prof[r.prof.length - 1];
+    g.font = '20px ' + FF; g.fillStyle = '#3f463a';
+    g.fillText('外表面 ' + C.f1(o.mean) + '±' + C.f1(o.amp) + '°C', X, y);
+    const zt = '内表面 ' + C.f1(z.mean) + (z.amp >= 0.005 ? '±' + C.f2(z.amp) : '') + '°C';
+    g.fillStyle = '#3d5a2e'; g.font = 'bold 20px ' + FF; g.fillText(zt, X + TW - g.measureText(zt).width, y);
+    y += 50;
+    /* 每层 */
+    g.fillStyle = '#4e5747'; g.font = '22px ' + FF; g.fillText('每层干了多少', X, y); y += 36;
+    const cols = [X, X + 400, X + 560, X + 760];
+    g.font = '18px ' + FF; g.fillStyle = '#6b7362';
+    ['从外到里', '厚度 mm', '晃动减小', '推迟'].forEach((t, i) => g.fillText(t, cols[i], y)); y += 32;
+    const rows = segRows(r).slice(0, -1).concat([['整堵墙', String(Math.round(r.totalMm * 10) / 10), '', r.swing ? C.ratioText(r.nu) : '—', r.swing ? C.hm(r.lag) : '—']]);
+    const bottom = H - 150;
+    let shown = 0;
+    for (const x of rows) {
+      if (y > bottom) break;
+      const lastRow = x[0] === '整堵墙';
+      g.fillStyle = lastRow ? '#3d5a2e' : '#23271f'; g.font = (lastRow ? 'bold ' : '') + '21px ' + FF;
+      g.fillText(fitText(g, x[0], 380), cols[0], y); g.fillText(x[1], cols[1], y); g.fillText(x[3], cols[2], y); g.fillText(fitText(g, x[4], TW - 690), cols[3], y);
+      y += 34; shown++;
+    }
+    if (shown < rows.length) { g.fillStyle = '#6b7362'; g.font = '18px ' + FF; g.fillText('……完整表格见 CSV / Markdown', X, y); y += 30; }
+    /* 一天 24 小时（剩余空间够才画） */
+    const DH = H - 130 - (y + 30);
+    if (DH >= 180) {
+      y += 24;
+      g.fillStyle = '#4e5747'; g.font = '22px ' + FF; g.fillText('一天 24 小时：橙色墙外，绿色墙里面', X, y); y += 8;
+      const gd = dayGeom(r, TW, DH), pts = curve(r);
+      g.save(); g.translate(X, y);
+      const st2 = tick(gd.lo, gd.hi); g.font = '16px ' + FF;
+      for (let t = Math.ceil(gd.lo / st2) * st2; t <= gd.hi; t += st2) { g.strokeStyle = '#e4e8de'; g.lineWidth = 1; g.beginPath(); g.moveTo(gd.padL, gd.Y(t)); g.lineTo(TW - gd.padR, gd.Y(t)); g.stroke(); g.fillStyle = '#6b7362'; g.textAlign = 'right'; g.fillText(C.f1(t).replace(/\.0$/, '') + '°', gd.padL - 6, gd.Y(t) + 5); }
+      g.textAlign = 'center';
+      for (let hh = 0; hh <= 24; hh += 6) g.fillText(hh + ':00', gd.X(hh * 60), DH - 6);
+      g.textAlign = 'left';
+      g.setLineDash([5, 5]); g.strokeStyle = '#9aa391'; g.beginPath(); g.moveTo(gd.padL, gd.Y(P.indoor)); g.lineTo(TW - gd.padR, gd.Y(P.indoor)); g.stroke(); g.setLineDash([]);
+      [['out', '#e07b39'], ['inner', '#3d5a2e']].forEach(([k, c]) => { g.strokeStyle = c; g.lineWidth = 3; g.beginPath(); pts.forEach((p, i) => g[i ? 'lineTo' : 'moveTo'](gd.X(p.m), gd.Y(p[k]))); g.stroke(); });
+      g.restore();
+    }
+    g.fillStyle = '#6b7362'; g.font = '18px ' + FF;
+    wrap(g, '墙外按一天正弦起伏、屋里恒温，一维稳定周期传热；材料数值是手册约数，示例为虚构。不是建筑节能设计计算。', TW).forEach((l, i) => g.fillText(l, X, H - 96 + i * 26));
+    return Promise.resolve(cv);
+  }
+  function backup() {
+    const r = last.r;
+    return { app: '晒透一堵墙', version: 1, savedAt: stamp(), input: copy(state),
+      result: { summary: r.summary, innerPeakAt: r.swing ? C.clock(r.peakIn) : null, lagMinutes: r.swing ? Math.round(r.lag) : null, innerSwingC: +C.f2(r.Asi), dampingTimes: r.swing ? +C.f2(r.nu) : null,
+        innerMinC: +C.f1(r.minSi), innerMaxC: +C.f1(r.maxSi), heatInMeanWm2: +C.f1(r.qMean), heatInMaxWm2: +C.f1(r.qMax), U: +C.f2(r.U), Rtotal: +C.f2(r.Rtot),
+        layers: r.segs.map((s) => ({ name: s.name, mm: s.mm, R: +C.f2(s.R), damping: isNaN(s.ratio) ? null : +C.f2(s.ratio), lagMinutes: isNaN(s.lag) ? null : Math.round(s.lag) })),
+        hourly: r.rows.map((x) => ({ at: x.at, outsideC: +C.f1(x.out), innerSurfaceC: +C.f1(x.inner), heatInWm2: +C.f1(x.q) })) } };
+  }
+  function init() {
+    TOP.forEach((k) => $(k).addEventListener('input', () => { state[k] = $(k).value; run(); }));
+    $('add').addEventListener('click', () => {
+      if (state.layers.length >= C.MAX_LAYERS) return;
+      state.layers.push(lay('gyp', 10)); buildLayers(); run();
+    });
+    PRESETS.forEach((p) => {
+      const b = document.createElement('button'); b.className = 'ghost'; b.textContent = p[0];
+      b.addEventListener('click', () => { state = copy(p[1]); fill(); run(); });
+      $('presets').appendChild(b);
+    });
+    $('reset').addEventListener('click', () => { state = copy(DEFAULT); fill(); run(); });
+    $('dlCSV').addEventListener('click', () => { if (last) download('晒透一堵墙.csv', new Blob(['\ufeff' + C.toCSV(last.r, stamp())], { type: 'text/csv;charset=utf-8' })); });
+    $('dlMD').addEventListener('click', () => { if (last) download('晒透一堵墙.md', new Blob([C.toMD(last.r, stamp(), last.sg)], { type: 'text/markdown;charset=utf-8' })); });
+    $('dlJSON').addEventListener('click', () => { if (last) download('晒透一堵墙-备份.json', new Blob([JSON.stringify(backup(), null, 2)], { type: 'application/json' })); });
+    $('dlPNG').addEventListener('click', () => { if (last) drawPNG(last).then((cv) => cv.toBlob((b) => download('晒透一堵墙-1080x1350.png', b), 'image/png')); });
+    state = load() || copy(DEFAULT);
+    fill(); run();
+    let rt = 0; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (last) { renderSect(last.r); renderDay(last.r); } }, 150); });
+    window.__ex = { last: () => last, state: () => state, presets: PRESETS, DEFAULT };
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+})();
+
+  </script>
+</body>
+</html>
